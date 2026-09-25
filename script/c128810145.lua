@@ -51,7 +51,6 @@ end
 function s.matfilter(c)
 	return c:IsSetCard(0xc06) and c:IsType(TYPE_MONSTER)
 end
-
 function s.mattg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
 	if chkc then return false end
 	if chk==0 then 
@@ -66,7 +65,7 @@ end
 function s.matop(e,tp,eg,ep,ev,re,r,rp)
 	local tg=Duel.GetChainInfo(0,CHAININFO_TARGET_CARDS)
 	if not tg or tg:FilterCount(Card.IsRelateToEffect,nil,e)<2 then return end
-	local xyz=tg:Filter(s.xyzfilter,e):GetFirst()
+	local xyz=tg:Filter(s.xyzfilter,nil):GetFirst()
 	local mat=tg:Filter(s.matfilter,nil):GetFirst()
 	if xyz and mat then
 		Duel.Overlay(xyz,Group.FromCards(mat))
