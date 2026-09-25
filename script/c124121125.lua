@@ -1,33 +1,51 @@
 --붉은 눈의 종기사
 local s,id=GetID()
 
--- 자신 메인 페이즈
-local function IsMyMainPhase(e,tp)
-	return Duel.GetTurnPlayer()==tp and Duel.IsMainPhase()
-end
-
 function s.initial_effect(c)
 	---------------------------------------------------------
-	-- ①: 자신 메인 페이즈에, 패의 이 카드를 공개하고 발동
-	--     덱/묘지의 레벨7↓ 전사족 "붉은 눈" 1장 특소
-	--     그 후 이 카드를 장착마법 취급으로 장착(ATK +400)
+	-- ①: 이 카드가 패에 존재하고, 카드가 세트되거나 몬스터에 장착되었을 경우에 발동
+	--	 덱/묘지의 레벨7↓ 전사족 "붉은 눈" 1장 특소
+	--	 그 후 이 카드를 공격력 400 올리는 장착 마법 카드로 취급하여 장착
 	---------------------------------------------------------
-	local e1=Effect.CreateEffect(c)
-	e1:SetDescription(aux.Stringid(id,0))
-	e1:SetCategory(CATEGORY_SPECIAL_SUMMON+CATEGORY_EQUIP)
-	e1:SetType(EFFECT_TYPE_IGNITION)      
-	e1:SetRange(LOCATION_HAND)
-	e1:SetCountLimit(1,id)
-	e1:SetCondition(IsMyMainPhase)
-	e1:SetCost(Cost.SelfReveal)           
-	e1:SetTarget(s.eqtg1)
-	e1:SetOperation(s.eqop1)
-	c:RegisterEffect(e1)
+	-- 1) 마법 / 함정 세트 시 (EVENT_SSET)
+	local e1a=Effect.CreateEffect(c)
+	e1a:SetDescription(aux.Stringid(id,0))
+	e1a:SetCategory(CATEGORY_SPECIAL_SUMMON+CATEGORY_EQUIP)
+	e1a:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_O)
+	e1a:SetProperty(EFFECT_FLAG_DELAY)
+	e1a:SetCode(EVENT_SSET)
+	e1a:SetRange(LOCATION_HAND)
+	e1a:SetCountLimit(1,id)
+	e1a:SetTarget(s.eqtg1)
+	e1a:SetOperation(s.eqop1)
+	c:RegisterEffect(e1a)
+
+	-- 2) 몬스터 세트 시 (EVENT_MSET)
+	local e1b=e1a:Clone()
+	e1b:SetCode(EVENT_MSET)
+	c:RegisterEffect(e1b)
+
+	-- 3) 뒷면 표시 특수 소환 시 (EVENT_SPSUMMON_SUCCESS)
+	local e1c=e1a:Clone()
+	e1c:SetCode(EVENT_SPSUMMON_SUCCESS)
+	e1c:SetCondition(s.spsuccesscon)
+	c:RegisterEffect(e1c)
+
+	-- 4) 표시 형식 변경으로 뒷면이 되었을 경우 (EVENT_CHANGE_POS)
+	local e1d=e1a:Clone()
+	e1d:SetCode(EVENT_CHANGE_POS)
+	e1d:SetCondition(s.changeposcon)
+	c:RegisterEffect(e1d)
+
+	-- 5) 몬스터에 장착되었을 경우 (EVENT_EQUIP)
+	local e1e=e1a:Clone()
+	e1e:SetCode(EVENT_EQUIP)
+	c:RegisterEffect(e1e)
 
 	---------------------------------------------------------
-	-- ②: (그대로) 필드에서 묘지로 보내졌을 경우
-	--     흑룡 1장만을 소재로 덱으로 되돌리고,
-	--     "붉은 눈"을 융합소재로 하는 융합 몬스터를 융합 소환
+	-- ②: 필드에서 묘지로 보내졌을 경우
+	--	 흑룡 1장만을 소재로 덱으로 되돌리고,
+	--	 "붉은 눈"을 융합소재로 하는 융합 몬스터를 융합 소환
 	---------------------------------------------------------
 	local e2=Effect.CreateEffect(c)
 	e2:SetDescription(aux.Stringid(id,1))
@@ -46,7 +64,24 @@ s.listed_series={SET_RED_EYES}
 s.listed_names={CARD_REDEYES_B_DRAGON}
 
 ---------------------------------------------------------
--- ① 관련
+-- ①번 효과 조건 함수 (아슈트라셴 삼천세계 구조 참조)
+---------------------------------------------------------
+
+-- 뒷면 표시 특수 소환 검증
+function s.spsuccesscon(e,tp,eg,ep,ev,re,r,rp)
+	return eg:IsExists(Card.IsFacedown,1,nil)
+end
+
+-- 앞면 -> 뒷면 표시 변경 검증
+function s.changeposconfilter(c)
+	return c:IsFacedown() and c:IsPreviousPosition(POS_FACEUP)
+end
+function s.changeposcon(e,tp,eg,ep,ev,re,r,rp)
+	return eg:IsExists(s.changeposconfilter,1,nil)
+end
+
+---------------------------------------------------------
+-- ①번 효과 실행
 ---------------------------------------------------------
 
 -- 특소할 후보: 자신의 덱 / 묘지의 레벨 7 이하 + 전사족 + "붉은 눈" 몬스터
@@ -73,7 +108,7 @@ function s.eqop1(e,tp,eg,ep,ev,re,r,rp)
 	local c=e:GetHandler()
 	if Duel.GetLocationCount(tp,LOCATION_MZONE)<=0 then return end
 	if Duel.GetLocationCount(tp,LOCATION_SZONE)<=0 then return end
-	-- 공개 코스트를 냈어도, 해소 시점에 이 카드가 패에 있어야 장착 가능
+	-- 해소 시점에 이 카드가 패에 존재해야 정상적으로 장착 처리 수행
 	if not (c:IsRelateToEffect(e) and c:IsLocation(LOCATION_HAND)) then return end
 
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SPSUMMON)
@@ -108,7 +143,7 @@ function s.eqop1(e,tp,eg,ep,ev,re,r,rp)
 end
 
 ---------------------------------------------------------
--- ② 관련
+-- ②번 효과 관련
 ---------------------------------------------------------
 
 -- “필드에서 묘지로” 갔는지 체크
@@ -117,7 +152,6 @@ function s.fuscon2(e,tp,eg,ep,ev,re,r,rp)
 end
 
 -- 소재로 되돌릴 대상: 자신 필드 / 묘지의 "붉은 눈의 흑룡"
--- + 그 1장을 덱으로 되돌렸을 때 소환 가능한 융합 몬스터가 실제로 존재해야 함
 function s.tdfilter2(c,e,tp)
 	return c:IsCode(CARD_REDEYES_B_DRAGON)
 		and (c:IsFaceup() or c:IsLocation(LOCATION_GRAVE))
@@ -126,10 +160,9 @@ function s.tdfilter2(c,e,tp)
 		and Duel.IsExistingMatchingCard(s.fusfilter2,tp,LOCATION_EXTRA,0,1,nil,e,tp,c)
 end
 
--- = "붉은 눈"을 융합 소재로 하는 융합 몬스터
+-- "붉은 눈"을 융합 소재로 하는 융합 몬스터
 function s.fusfilter2(fc,e,tp,mc)
 	if Duel.GetLocationCountFromEx(tp,tp,mc,fc)<=0 then return false end
-	-- 강제 융합 소재 그룹(환경에 따라 생길 수 있음) 처리
 	local mustg=aux.GetMustBeMaterialGroup(tp,nil,tp,fc,nil,REASON_FUSION)
 	if #mustg>0 and not (#mustg==1 and mustg:IsContains(mc)) then return false end
 
@@ -159,15 +192,12 @@ function s.fusop2(e,tp,eg,ep,ev,re,r,rp)
 		return
 	end
 
-	-- "붉은 눈 융합"과 같은 풀에서 융합 몬스터 선택
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SPSUMMON)
 	local sc=Duel.SelectMatchingCard(tp,s.fusfilter2,tp,LOCATION_EXTRA,0,1,1,nil,e,tp,tc):GetFirst()
 	if not sc then return end
 
-	-- 대상이 뒷면이면 공개
 	if tc:IsFacedown() then Duel.ConfirmCards(1-tp,tc) end
 
-	-- 티마이오스 방식: 대상 1장만을 소재로 취급
 	sc:SetMaterial(Group.FromCards(tc))
 	Duel.SendtoDeck(tc,nil,SEQ_DECKSHUFFLE,REASON_EFFECT|REASON_MATERIAL|REASON_FUSION)
 
