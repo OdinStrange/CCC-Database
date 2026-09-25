@@ -1,6 +1,5 @@
 --헤블론-죽은 자의 성
 local s,id=GetID()
-local matlimit={id,1}  -- 스크립트 로드 시 1번만 생성되어 같은 이름 카드끼리 공유됨
 function s.initial_effect(c)
 	--① 발동시: 덱에서 "헤블론" 카드 1장을 패에 넣기
 	local e1=Effect.CreateEffect(c)
@@ -19,7 +18,7 @@ function s.initial_effect(c)
 	e2:SetType(EFFECT_TYPE_IGNITION)
 	e2:SetRange(LOCATION_FZONE)
 	e2:SetProperty(EFFECT_FLAG_CARD_TARGET)
-	e2:SetCountLimit(1,matlimit)  -- ✅ 이 카드명의 ②의 효과는 1턴에 1번만 사용 가능
+	e2:SetCountLimit(1,{id,1})  -- ✅ 이 카드명의 ②의 효과는 1턴에 1번만 사용 가능
 	e2:SetTarget(s.mattg)
 	e2:SetOperation(s.matop)
 	c:RegisterEffect(e2)
@@ -67,8 +66,8 @@ end
 function s.matop(e,tp,eg,ep,ev,re,r,rp)
 	local tg=Duel.GetChainInfo(0,CHAININFO_TARGET_CARDS)
 	if not tg or tg:FilterCount(Card.IsRelateToEffect,nil,e)<2 then return end
-	local xyz=tg:Filter(Card.IsLocation,nil,LOCATION_MZONE):GetFirst()
-	local mat=tg:Filter(Card.IsLocation,nil,LOCATION_GRAVE):GetFirst()
+	local xyz=tg:Filter(s.xyzfilter,nil,e):GetFirst()
+	local mat=tg:Filter(s.matfilter,nil):GetFirst()
 	if xyz and mat then
 		Duel.Overlay(xyz,Group.FromCards(mat))
 	end
