@@ -66,7 +66,7 @@ end
 function s.matop(e,tp,eg,ep,ev,re,r,rp)
 	local tg=Duel.GetChainInfo(0,CHAININFO_TARGET_CARDS)
 	if not tg or tg:FilterCount(Card.IsRelateToEffect,nil,e)<2 then return end
-	local xyz=tg:Filter(s.xyzfilter,e):GetFirst()
+	local xyz=tg:Filter(s.xyzfilter,nil,e):GetFirst()
 	local mat=tg:Filter(s.matfilter,nil):GetFirst()
 	if xyz and mat then
 		Duel.Overlay(xyz,Group.FromCards(mat))
